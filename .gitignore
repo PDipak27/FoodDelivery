@@ -1,0 +1,30 @@
+# ── Maven ──────────────────────────────────────────────────────────────────────
+target/
+*.jar
+*.war
+*.ear
+
+# ── Eclipse ────────────────────────────────────────────────────────────────────
+.classpath
+.project
+.settings/
+bin/
+
+# ── IntelliJ (just in case) ────────────────────────────────────────────────────
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# ── OS ─────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Docker env (may contain real credentials outside localhost) ────────────────
+# compose.env is committed because it only holds localhost defaults.
+# Add real secret overrides to docker/.env.local and keep that out of git.
+docker/.env.local
+
+# ── Secrets / local overrides ──────────────────────────────────────────────────
+*.env.local
+.env.local

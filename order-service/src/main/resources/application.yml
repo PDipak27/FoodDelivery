@@ -1,0 +1,38 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: order-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/fooddelivery_db
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    hikari:
+      maximum-pool-size: 5
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: orders
+    show-sql: false
+    open-in-view: false
+
+service:
+  restaurant:
+    url: ${RESTAURANT_SERVICE_URL:http://localhost:8083}
+  payment:
+    url: ${PAYMENT_SERVICE_URL:http://localhost:8085}
+  notification:
+    url: ${NOTIFICATION_SERVICE_URL:http://localhost:8087}
+  delivery:
+    url: ${DELIVERY_SERVICE_URL:http://localhost:8086}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

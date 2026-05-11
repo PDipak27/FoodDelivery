@@ -1,0 +1,70 @@
+# Infrastructure-only compose file — Redis, MongoDB, Mailpit as containers.
+# Postgres remains local (v18 installed on host).
+#
+# Start:  docker compose -f docker/docker-compose.infra.yml up -d
+# Stop:   docker compose -f docker/docker-compose.infra.yml down
+# Reset:  docker compose -f docker/docker-compose.infra.yml down -v  (wipes MongoDB volume)
+#
+# Creates fd-network so all infra containers are reachable by name from docker-compose.services.yml
+
+services:
+  mongodb:
+    # Ubuntu-based image — mongosh built in, used by the healthcheck below.
+    image: mongo:7
+    container_name: fd-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - fd-mongo-data:/data/db
+      - ./mongo-init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - fd-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  redis:
+    # Alpine image — redis-cli built in, used for the healthcheck ping.
+    image: redis:7.2-alpine
+    container_name: fd-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - fd-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  mailpit:
+    # Drop-in for Mailhog — Alpine-based (wget available), actively maintained.
+    image: axllent/mailpit:latest
+    container_name: fd-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - fd-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8025/api/v1/messages"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+volumes:
+  fd-mongo-data:
+    name: fd-mongo-data
+
+networks:
+  fd-network:
+    name: fd-network
+    driver: bridge

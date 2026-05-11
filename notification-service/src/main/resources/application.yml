@@ -1,0 +1,24 @@
+server:
+  port: 8087
+
+spring:
+  application:
+    name: notification-service
+
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    properties:
+      mail.smtp.auth: false
+      mail.smtp.starttls.enable: false
+
+  thymeleaf:
+    prefix: classpath:/templates/
+    suffix: .html
+    cache: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

@@ -1,0 +1,34 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: auth-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/fooddelivery_db
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    hikari:
+      maximum-pool-size: 5
+
+  jpa:
+    hibernate:
+      ddl-auto: validate        # Tables managed via db-scripts; validate schema on startup
+    properties:
+      hibernate:
+        default_schema: auth
+    show-sql: false
+    open-in-view: false
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    access-token-expiry-ms: 900000    # 15 minutes
+    refresh-token-expiry-days: 7
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

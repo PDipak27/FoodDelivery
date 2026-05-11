@@ -1,0 +1,220 @@
+# Microservices compose file.
+# Requires infra to be running first: docker compose -f docker/docker-compose.infra.yml up -d
+# Start services:                     docker compose -f docker/docker-compose.services.yml up -d
+#
+# Set JWT_SECRET before starting:
+#   Windows CMD : set JWT_SECRET=your-secret-key-min-32-chars
+#   PowerShell  : $env:JWT_SECRET="your-secret-key-min-32-chars"
+#
+# Postgres runs locally; services reach it via host.docker.internal.
+# MongoDB and Redis run as containers on fd-network (defined in docker-compose.infra.yml).
+# Common env vars (DB creds, Redis, Mailpit, Mongo URI) are loaded from docker/compose.env automatically.
+
+services:
+  api-gateway:
+    build:
+      context: ..
+      dockerfile: api-gateway/Dockerfile
+    image: fd/api-gateway:latest
+    container_name: fd-api-gateway
+    ports:
+      - "8080:8080"
+    env_file:
+      - compose.env
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      AUTH_SERVICE_URL: http://fd-auth-service:8081
+      USER_SERVICE_URL: http://fd-user-service:8082
+      RESTAURANT_SERVICE_URL: http://fd-restaurant-service:8083
+      ORDER_SERVICE_URL: http://fd-order-service:8084
+      PAYMENT_SERVICE_URL: http://fd-payment-service:8085
+      DELIVERY_SERVICE_URL: http://fd-delivery-service:8086
+      NOTIFICATION_SERVICE_URL: http://fd-notification-service:8087
+    networks:
+      - fd-network
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      restaurant-service:
+        condition: service_healthy
+      order-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  auth-service:
+    build:
+      context: ..
+      dockerfile: auth-service/Dockerfile
+    image: fd/auth-service:latest
+    container_name: fd-auth-service
+    ports:
+      - "8081:8081"
+    env_file:
+      - compose.env
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      DB_URL: jdbc:postgresql://host.docker.internal:5432/fooddelivery_db
+    networks:
+      - fd-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  user-service:
+    build:
+      context: ..
+      dockerfile: user-service/Dockerfile
+    image: fd/user-service:latest
+    container_name: fd-user-service
+    ports:
+      - "8082:8082"
+    env_file:
+      - compose.env
+    environment:
+      DB_URL: jdbc:postgresql://host.docker.internal:5432/fooddelivery_db
+    networks:
+      - fd-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8082/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  restaurant-service:
+    build:
+      context: ..
+      dockerfile: restaurant-service/Dockerfile
+    image: fd/restaurant-service:latest
+    container_name: fd-restaurant-service
+    ports:
+      - "8083:8083"
+    env_file:
+      - compose.env
+    # MONGO_URI and REDIS_HOST/PORT come from compose.env — point to fd-network containers.
+    # MongoDB and Redis live in the infra compose file; start infra first.
+    networks:
+      - fd-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8083/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  order-service:
+    build:
+      context: ..
+      dockerfile: order-service/Dockerfile
+    image: fd/order-service:latest
+    container_name: fd-order-service
+    ports:
+      - "8084:8084"
+    env_file:
+      - compose.env
+    environment:
+      DB_URL: jdbc:postgresql://host.docker.internal:5432/fooddelivery_db
+      RESTAURANT_SERVICE_URL: http://fd-restaurant-service:8083
+      PAYMENT_SERVICE_URL: http://fd-payment-service:8085
+      DELIVERY_SERVICE_URL: http://fd-delivery-service:8086
+      NOTIFICATION_SERVICE_URL: http://fd-notification-service:8087
+    networks:
+      - fd-network
+    depends_on:
+      restaurant-service:
+        condition: service_healthy
+      payment-service:
+        condition: service_healthy
+      delivery-service:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8084/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  payment-service:
+    build:
+      context: ..
+      dockerfile: payment-service/Dockerfile
+    image: fd/payment-service:latest
+    container_name: fd-payment-service
+    ports:
+      - "8085:8085"
+    env_file:
+      - compose.env
+    environment:
+      DB_URL: jdbc:postgresql://host.docker.internal:5432/fooddelivery_db
+    networks:
+      - fd-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8085/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  delivery-service:
+    build:
+      context: ..
+      dockerfile: delivery-service/Dockerfile
+    image: fd/delivery-service:latest
+    container_name: fd-delivery-service
+    ports:
+      - "8086:8086"
+    env_file:
+      - compose.env
+    environment:
+      DB_URL: jdbc:postgresql://host.docker.internal:5432/fooddelivery_db
+    networks:
+      - fd-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8086/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  notification-service:
+    build:
+      context: ..
+      dockerfile: notification-service/Dockerfile
+    image: fd/notification-service:latest
+    container_name: fd-notification-service
+    ports:
+      - "8087:8087"
+    env_file:
+      - compose.env
+    networks:
+      - fd-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8087/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+networks:
+  fd-network:
+    driver: bridge

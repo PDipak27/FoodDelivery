@@ -1,0 +1,19 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: restaurant-service
+
+  data:
+    mongodb:
+      uri: ${MONGO_URI:mongodb://localhost:27017/fooddelivery_restaurant}
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

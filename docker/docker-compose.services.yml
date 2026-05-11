@@ -61,7 +61,7 @@ services:
       - compose.env
     environment:
       JWT_SECRET: ${JWT_SECRET}
-      DB_URL: jdbc:postgresql://host.docker.internal:5432/fooddelivery_db
+      SPRING_DATASOURCE_URL: jdbc:postgresql://host.docker.internal:5432/fooddelivery_db
     networks:
       - fd-network
     healthcheck:
@@ -83,7 +83,7 @@ services:
     env_file:
       - compose.env
     environment:
-      DB_URL: jdbc:postgresql://host.docker.internal:5432/fooddelivery_db
+      SPRING_DATASOURCE_URL: jdbc:postgresql://host.docker.internal:5432/fooddelivery_db
     networks:
       - fd-network
     healthcheck:
@@ -127,7 +127,7 @@ services:
     env_file:
       - compose.env
     environment:
-      DB_URL: jdbc:postgresql://host.docker.internal:5432/fooddelivery_db
+      SPRING_DATASOURCE_URL: jdbc:postgresql://host.docker.internal:5432/fooddelivery_db
       RESTAURANT_SERVICE_URL: http://fd-restaurant-service:8083
       PAYMENT_SERVICE_URL: http://fd-payment-service:8085
       DELIVERY_SERVICE_URL: http://fd-delivery-service:8086
@@ -162,7 +162,7 @@ services:
     env_file:
       - compose.env
     environment:
-      DB_URL: jdbc:postgresql://host.docker.internal:5432/fooddelivery_db
+      SPRING_DATASOURCE_URL: jdbc:postgresql://host.docker.internal:5432/fooddelivery_db
     networks:
       - fd-network
     healthcheck:
@@ -184,7 +184,7 @@ services:
     env_file:
       - compose.env
     environment:
-      DB_URL: jdbc:postgresql://host.docker.internal:5432/fooddelivery_db
+      SPRING_DATASOURCE_URL: jdbc:postgresql://host.docker.internal:5432/fooddelivery_db
     networks:
       - fd-network
     healthcheck:
@@ -217,4 +217,5 @@ services:
 
 networks:
   fd-network:
-    driver: bridge
+    external: true
+

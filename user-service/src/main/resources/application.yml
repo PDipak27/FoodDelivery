@@ -13,6 +13,7 @@ spring:
       maximum-pool-size: 5
 
   jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: validate
     properties:

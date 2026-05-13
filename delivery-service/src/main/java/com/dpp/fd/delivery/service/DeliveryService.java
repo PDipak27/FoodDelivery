@@ -9,6 +9,7 @@ import com.dpp.fd.delivery.exception.DeliveryException;
 import com.dpp.fd.delivery.repository.DeliveryAgentRepository;
 import com.dpp.fd.delivery.repository.DeliveryRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +20,7 @@ import java.util.UUID;
  * Assigns a free agent to a delivery using first-available strategy.
  * In a production system this would consider proximity or workload balancing.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DeliveryService {
@@ -28,8 +30,13 @@ public class DeliveryService {
 
     @Transactional
     public AssignDeliveryResponse assign(AssignDeliveryRequest request) {
+        log.info("Assigning delivery agent for orderId={}", request.getOrderId());
+
         DeliveryAgent agent = agentRepository.findFirstByIsFreeTrue()
-                .orElseThrow(() -> new DeliveryException("No available delivery agents"));
+                .orElseThrow(() -> {
+                    log.warn("No free delivery agents available for orderId={}", request.getOrderId());
+                    return new DeliveryException("No available delivery agents");
+                });
 
         agent.setFree(false);
         agentRepository.save(agent);
@@ -40,6 +47,9 @@ public class DeliveryService {
                 .status(DeliveryStatus.ASSIGNED)
                 .assignedAt(LocalDateTime.now())
                 .build());
+
+        log.info("Delivery assigned deliveryId={} agentId={} agentName='{}' orderId={}",
+                delivery.getId(), agent.getId(), agent.getName(), request.getOrderId());
 
         return AssignDeliveryResponse.builder()
                 .deliveryId(delivery.getId())
@@ -53,12 +63,15 @@ public class DeliveryService {
         Delivery delivery = deliveryRepository.findById(deliveryId)
                 .orElseThrow(() -> new DeliveryException("Delivery not found: " + deliveryId));
 
+        DeliveryStatus previous = delivery.getStatus();
         delivery.setStatus(newStatus);
+        log.info("Delivery {} status: {} → {}", deliveryId, previous, newStatus);
 
-        // Free agent when delivery completes
         if (newStatus == DeliveryStatus.DELIVERED) {
             delivery.getAgent().setFree(true);
             agentRepository.save(delivery.getAgent());
+            log.info("Agent {} '{}' is now free after completing delivery {}",
+                    delivery.getAgent().getId(), delivery.getAgent().getName(), deliveryId);
         }
 
         deliveryRepository.save(delivery);

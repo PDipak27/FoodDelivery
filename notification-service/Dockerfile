@@ -11,6 +11,7 @@ COPY order-service/pom.xml        order-service/
 COPY payment-service/pom.xml      payment-service/
 COPY delivery-service/pom.xml     delivery-service/
 COPY notification-service/pom.xml notification-service/
+COPY e2e-tests/pom.xml            e2e-tests/
 RUN --mount=type=cache,target=/root/.m2 mvn dependency:go-offline -pl notification-service -am -q
 COPY notification-service/src notification-service/src
 RUN --mount=type=cache,target=/root/.m2 mvn package -pl notification-service -am -DskipTests -q

@@ -8,6 +8,7 @@ import com.dpp.fd.payment.enums.PaymentStatus;
 import com.dpp.fd.payment.exception.ResourceNotFoundException;
 import com.dpp.fd.payment.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +19,7 @@ import java.util.UUID;
  * Mock/stub payment service. Succeeds for all amounts ≤ 9999,
  * fails above that threshold — useful for simulating failure scenarios in tests.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PaymentService {
@@ -31,11 +33,18 @@ public class PaymentService {
         PaymentStatus status = request.getAmount().compareTo(FAILURE_THRESHOLD) > 0
                 ? PaymentStatus.FAILED : PaymentStatus.SUCCESS;
 
+        log.info("Charging orderId={} amount={} → status={}", request.getOrderId(), request.getAmount(), status);
+
         Payment payment = paymentRepository.save(Payment.builder()
                 .orderId(request.getOrderId())
                 .amount(request.getAmount())
                 .status(status)
                 .build());
+
+        if (status == PaymentStatus.FAILED) {
+            log.warn("Payment FAILED for orderId={} amount={} (threshold={})",
+                    request.getOrderId(), request.getAmount(), FAILURE_THRESHOLD);
+        }
 
         return ChargeResponse.builder()
                 .paymentId(payment.getId())
@@ -46,10 +55,12 @@ public class PaymentService {
 
     @Transactional
     public RefundResponse refund(UUID paymentId) {
+        log.info("Refund requested for paymentId={}", paymentId);
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Payment not found: " + paymentId));
         payment.setStatus(PaymentStatus.REFUNDED);
         paymentRepository.save(payment);
+        log.info("Refund completed paymentId={} orderId={}", paymentId, payment.getOrderId());
         return RefundResponse.builder().paymentId(paymentId).status(PaymentStatus.REFUNDED).build();
     }
 }

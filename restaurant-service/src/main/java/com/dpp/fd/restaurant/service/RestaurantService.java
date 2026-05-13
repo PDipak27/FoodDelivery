@@ -7,6 +7,7 @@ import com.dpp.fd.restaurant.exception.ForbiddenException;
 import com.dpp.fd.restaurant.exception.ResourceNotFoundException;
 import com.dpp.fd.restaurant.repository.RestaurantRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,7 @@ import java.util.UUID;
  * Read-heavy getById results are cached in Redis ("restaurants" cache, TTL 5 min).
  * Cache is evicted on any mutation to keep reads consistent.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RestaurantService {
@@ -26,19 +28,24 @@ public class RestaurantService {
     private final RestaurantRepository repository;
 
     public List<RestaurantDto> getAllOpen(String city, String cuisine) {
+        log.debug("Listing open restaurants — city={} cuisine={}", city, cuisine);
         List<Restaurant> results;
-        if (city != null)        results = repository.findByCityAndIsOpenTrue(city);
+        if (city != null)         results = repository.findByCityAndIsOpenTrue(city);
         else if (cuisine != null) results = repository.findByCuisineIgnoreCaseAndIsOpenTrue(cuisine);
         else                      results = repository.findAll();
+        log.debug("Found {} restaurant(s)", results.size());
         return results.stream().map(this::toDto).toList();
     }
 
     @Cacheable(value = "restaurants", key = "#id")
     public RestaurantDto getById(String id) {
+        log.debug("Fetching restaurant id={}", id);
         return toDto(findOrThrow(id));
     }
 
     public RestaurantDto create(String ownerId, CreateRestaurantRequest req) {
+        log.info("Creating restaurant name='{}' cuisine='{}' city='{}' ownerId={}",
+                req.getName(), req.getCuisine(), req.getCity(), ownerId);
         Restaurant restaurant = Restaurant.builder()
                 .ownerId(ownerId)
                 .name(req.getName())
@@ -46,13 +53,16 @@ public class RestaurantService {
                 .city(req.getCity())
                 .isOpen(true)
                 .build();
-        return toDto(repository.save(restaurant));
+        Restaurant saved = repository.save(restaurant);
+        log.info("Restaurant created id={}", saved.getId());
+        return toDto(saved);
     }
 
     @CacheEvict(value = "restaurants", key = "#id")
     public RestaurantDto updateMenu(String id, String ownerId, UpdateMenuRequest req) {
         Restaurant restaurant = findOrThrow(id);
         verifyOwnership(restaurant, ownerId);
+        log.info("Updating menu for restaurantId={} — {} item(s)", id, req.getItems().size());
         List<MenuItem> items = req.getItems().stream()
                 .map(dto -> MenuItem.builder()
                         .itemId(dto.getItemId() != null ? dto.getItemId() : UUID.randomUUID().toString())
@@ -70,7 +80,9 @@ public class RestaurantService {
         Restaurant restaurant = findOrThrow(id);
         verifyOwnership(restaurant, ownerId);
         restaurant.setOpen(!restaurant.isOpen());
-        return toDto(repository.save(restaurant));
+        Restaurant saved = repository.save(restaurant);
+        log.info("Restaurant {} '{}' is now {}", id, saved.getName(), saved.isOpen() ? "OPEN" : "CLOSED");
+        return toDto(saved);
     }
 
     // --- helpers ---
@@ -82,6 +94,8 @@ public class RestaurantService {
 
     private void verifyOwnership(Restaurant restaurant, String ownerId) {
         if (!restaurant.getOwnerId().equals(ownerId)) {
+            log.warn("Ownership check failed restaurantId={} claimedOwner={} actualOwner={}",
+                    restaurant.getId(), ownerId, restaurant.getOwnerId());
             throw new ForbiddenException("You do not own this restaurant");
         }
     }

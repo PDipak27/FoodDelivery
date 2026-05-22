@@ -40,7 +40,9 @@ public class RestaurantService {
     @Cacheable(value = "restaurants", key = "#id")
     public RestaurantDto getById(String id) {
         log.debug("Fetching restaurant id={}", id);
-        return toDto(findOrThrow(id));
+        RestaurantDto res = toDto(findOrThrow(id));
+        log.info("RestaurantSvc getById restaurant id={}  isOpen:{}", id,res.isOpen());
+        return res;
     }
 
     public RestaurantDto create(String ownerId, CreateRestaurantRequest req) {
@@ -88,8 +90,11 @@ public class RestaurantService {
     // --- helpers ---
 
     private Restaurant findOrThrow(String id) {
-        return repository.findById(id)
+    		Restaurant res= repository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Restaurant not found: " + id));
+    		log.info("findOrThrow()  restaurantId={} isOpen:{}",
+    				id, res.isOpen());
+    		return res;
     }
 
     private void verifyOwnership(Restaurant restaurant, String ownerId) {

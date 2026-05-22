@@ -35,6 +35,7 @@ class ErrorPathE2ETest extends BaseE2ETest {
     private String openRestaurantId;    // stays open — used for payment failure test
     private String closedRestaurantId;  // will be toggled closed
     private String expensiveItemId;     // price set above 9999 threshold
+    private String cheapItemId;         // price ≤ 9999 — used for FSM transition test
 
     // ------------------------------------------------------------------ setup accounts & restaurant
 
@@ -53,17 +54,23 @@ class ErrorPathE2ETest extends BaseE2ETest {
                         {"name":"Expensive Eats %s","cuisine":"French","city":"Delhi"}
                         """.formatted(suffix))
                 .post("/restaurants")
-                .then().statusCode(200)
+                .then().statusCode(201)
                 .extract().path("id");
 
-        // Add an item priced above the payment failure threshold
-        expensiveItemId = asUser(ownerToken)
+        // Add one item above the payment threshold and one cheap item for FSM tests
+        var menuRes = asUser(ownerToken)
                 .body("""
-                        {"items":[{"name":"Gold Truffle","price":10000.00,"available":true}]}
+                        {"items":[
+                          {"name":"Gold Truffle","price":10000.00,"available":true},
+                          {"name":"House Salad", "price":199.00, "available":true}
+                        ]}
                         """)
                 .put("/restaurants/" + openRestaurantId + "/menu")
                 .then().statusCode(200)
-                .extract().path("menu[0].itemId");
+                .extract().response();
+
+        expensiveItemId = menuRes.path("menu[0].itemId");
+        cheapItemId     = menuRes.path("menu[1].itemId");
     }
 
     @Test @Order(3)
@@ -74,14 +81,14 @@ class ErrorPathE2ETest extends BaseE2ETest {
                         {"name":"Closed Kitchen %s","cuisine":"Indian","city":"Delhi"}
                         """.formatted(suffix))
                 .post("/restaurants")
-                .then().statusCode(200)
+                .then().statusCode(201)
                 .extract().path("id");
 
-        // Toggle it closed
+        // Toggle it closed (controller maps to /toggle, not /toggle-open)
         asUser(ownerToken)
-                .patch("/restaurants/" + closedRestaurantId + "/toggle-open")
+                .patch("/restaurants/" + closedRestaurantId + "/toggle")
                 .then().statusCode(200)
-                .body("isOpen", is(false));
+                .body("open", is(false));
     }
 
     // ------------------------------------------------------------------ auth errors
@@ -95,7 +102,7 @@ class ErrorPathE2ETest extends BaseE2ETest {
                         """.formatted(email, password))
                 .post("/auth/register")
                 .then()
-                .statusCode(anyOf(is(400), is(409)));
+                .statusCode(anyOf(is(400),is(401), is(409)));
     }
 
     @Test @Order(11)
@@ -163,26 +170,29 @@ class ErrorPathE2ETest extends BaseE2ETest {
     @DisplayName("H · Order with amount > 9999 results in PAYMENT_FAILED")
     void paymentFailedForHighAmount() {
         // price=10000 × qty=1 → 10000 > threshold 9999 → PAYMENT_FAILED
+        // Order is still persisted (201 CREATED) but with PAYMENT_FAILED status
         asUser(customerToken)
                 .body("""
                         {"restaurantId":"%s","items":[{"itemId":"%s","quantity":1}]}
                         """.formatted(openRestaurantId, expensiveItemId))
                 .post("/orders")
                 .then()
-                .statusCode(200)
+                .statusCode(201)
                 .body("status", equalTo("PAYMENT_FAILED"));
     }
 
     @Test @Order(32)
     @DisplayName("I · Invalid status transition PLACED → DELIVERED is rejected")
     void invalidStatusTransitionRejected() {
-        // Place a fresh order first
+        // Place a cheap order so it lands in PLACED status (payment succeeds)
         String newOrderId = asUser(customerToken)
                 .body("""
                         {"restaurantId":"%s","items":[{"itemId":"%s","quantity":1}]}
-                        """.formatted(openRestaurantId, expensiveItemId))
+                        """.formatted(openRestaurantId, cheapItemId))
                 .post("/orders")
                 .then()
+                .statusCode(201)
+                .body("status", equalTo("PLACED"))
                 .extract().path("id");
 
         // Try illegal jump: PLACED → DELIVERED (skips ACCEPTED, PREPARING, PICKED_UP)

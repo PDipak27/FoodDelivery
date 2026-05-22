@@ -11,12 +11,10 @@ import static io.restassured.RestAssured.given;
 
 /**
  * Base class shared by all E2E test suites.
- *
  * <p>Configuration via system properties / env vars:
  * <ul>
  *   <li>{@code BASE_URL}   — gateway URL, default {@code http://localhost:8080}</li>
  * </ul>
- *
  * <p>Run with the live stack up:
  * <pre>
  *   mvn test -pl e2e-tests -Dskip.e2e=false [-DBASE_URL=http://localhost:8080]
@@ -54,7 +52,7 @@ public abstract class BaseE2ETest {
                         {"email":"%s","password":"%s","role":"%s"}
                         """.formatted(email, password, role))
                 .post("/auth/register")
-                .then().statusCode(200)
+                .then().statusCode(201)
                 .extract().path("accessToken");
     }
 

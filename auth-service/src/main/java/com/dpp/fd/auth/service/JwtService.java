@@ -27,11 +27,12 @@ public class JwtService {
         this.accessTokenExpiryMs = accessTokenExpiryMs;
     }
 
-    /** Generates a signed JWT containing userId (sub) and role. */
+    /** Generates a signed JWT containing userId (sub), role, and email. */
     public String generateAccessToken(User user) {
         return Jwts.builder()
                 .subject(user.getId().toString())
-                .claim("role", user.getRole().name())
+                .claim("role",  user.getRole().name())
+                .claim("email", user.getEmail())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + accessTokenExpiryMs))
                 .signWith(signingKey)

@@ -5,6 +5,8 @@ import com.dpp.fd.restaurant.exception.ForbiddenException;
 import com.dpp.fd.restaurant.service.RestaurantService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -12,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
+@Slf4j
 @RequestMapping("/restaurants")
 @RequiredArgsConstructor
 public class RestaurantController {
@@ -27,7 +30,9 @@ public class RestaurantController {
 
     @GetMapping("/{id}")
     public RestaurantDto getById(@PathVariable String id) {
-        return restaurantService.getById(id);
+         RestaurantDto res = restaurantService.getById(id);
+         log.info("RestaurantController:getById: isOpen"+res.isOpen());
+         return res;
     }
 
     @PostMapping

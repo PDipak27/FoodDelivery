@@ -76,12 +76,12 @@ class HappyPathE2ETest extends BaseE2ETest {
                         """.formatted(suffix))
                 .post("/restaurants")
                 .then()
-                .statusCode(200)
+                .statusCode(201)
                 .body("id",      notNullValue())
-                .body("isOpen",  is(true))
+                .body("open",  is(true))
                 .body("cuisine", equalTo("Italian"))
                 .extract().response();
-
+        //res.asPrettyString()
         restaurantId = res.path("id");
         assertNotNull(restaurantId, "restaurantId must be present in response");
     }
@@ -107,7 +107,7 @@ class HappyPathE2ETest extends BaseE2ETest {
         assertNotNull(itemId, "itemId must be returned in menu response");
     }
 
-    @Test @Order(6)
+    @Test @Order(6) 
     @DisplayName("6 · Customer can browse restaurant list")
     void getRestaurants() {
         given().contentType("application/json")
@@ -125,7 +125,7 @@ class HappyPathE2ETest extends BaseE2ETest {
                 .then()
                 .statusCode(200)
                 .body("id",     equalTo(restaurantId))
-                .body("isOpen", is(true));
+                .body("open", is(true));
     }
 
     // ------------------------------------------------------------------ order
@@ -139,12 +139,12 @@ class HappyPathE2ETest extends BaseE2ETest {
                         """.formatted(restaurantId, itemId))
                 .post("/orders")
                 .then()
-                .statusCode(200)
+                .statusCode(201)
                 .body("id",          notNullValue())
                 .body("status",      equalTo("PLACED"))
                 .body("totalAmount", equalTo(598.0f))   // 299 × 2
                 .extract().response();
-
+res.asPrettyString();
         orderId = res.path("id");
         assertNotNull(orderId, "orderId must be returned");
     }
